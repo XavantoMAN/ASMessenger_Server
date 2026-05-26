@@ -15,9 +15,11 @@ async def handle_connect(websocket):
             user_id = data['user_id']
             print(data)
             if len(users.keys()) < 100:
-                users[user_id] = websocket
-                print(users.keys())
-                print(users.values())
+                if user_id != 0:
+                    users[user_id] = websocket
+                    print(users.keys())
+                    print(users.values())
+            db.change_message_status_to_delivered(user_id)
         elif data['purpose'] == 'message':
             chat_id = data['chat_id']
             sender_id = data['sender_id']
@@ -33,13 +35,33 @@ async def handle_connect(websocket):
                 else:
                     data['sender_name'] = i[1]
             print(chat)
-            db.add_message(chat_id, sender_id, recipient_id, message_text)
+            message_id = db.add_message(chat_id, sender_id, recipient_id, message_text)
+            data['message_id'] = message_id
             broadcast(chat, json.dumps(data))
             chat = []
+        elif data['purpose'] == 'delivered':
+            print("Message delivered")
+            message_id = data['message_id']
+            recipient_id = data['recipient_id']
+            db.change_message_status_to_delivered(message_id, recipient_id)
+        elif data['purpose'] == 'read':
+            print("Message read")
+            chat_id = data['chat_id']
+            recipient_id = data['recipient_id']
+            db.change_message_status_to_read(chat_id, recipient_id)
+        elif data['purpose'] == 'disconnect':
+            print("user disconnected")
+            user_id = data['user_id']
+            users[user_id].close()
+            users.pop(user_id)
+            print(users.keys())
+            print(users.values())
+
+
 
 
 async def main():
-    async with serve(handle_connect, "192.168.1.67", 1504):
+    async with serve(handle_connect, "192.168.0.102", 1504):
         await asyncio.Future()  # run forever
 
 asyncio.run(main())

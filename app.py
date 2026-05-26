@@ -6,7 +6,7 @@ import json
 
 UPLOAD_FOLDER = '/static/user_avatars'
 
-HOST = "192.168.1.67"
+HOST = "192.168.0.102"
 PORT = 1500
 
 app = Flask(__name__)
@@ -84,8 +84,7 @@ def get_partner_info():
     user_data = request.data.decode()
     user_data = json.loads(user_data)
     partner_id = user_data['partner_id']
-    your_type = user_data['type']
-    result = db_connection.get_partner_info(partner_id, your_type)
+    result = db_connection.get_partner_info(partner_id)
     return result
 
 
@@ -94,16 +93,15 @@ def get_messages():
     user_data = request.data.decode()
     user_data = json.loads(user_data)
     chat_id = user_data['chat_id']
+    user_id = user_data['user_id']
     page = user_data['page']
-    result = db_connection.get_messages(chat_id, page)
+    result = db_connection.get_messages(chat_id, user_id, page)
     return result
 
 
 @app.route("/show_chat_list", methods=['POST'])
 def show_chat_list():
-    user_data = request.data.decode()
-    user_data = json.loads(user_data)
-    user_id = user_data['user_id']
+    user_id = int(request.data.decode())
     result = db_connection.get_chat_list(user_id)
     return result
 

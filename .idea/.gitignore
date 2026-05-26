@@ -6,3 +6,22 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+# Файлы с секретами и настройками окружения
+.env
+.env.local
+
+# Виртуальное окружение (если ты создашь его локально)
+venv/
+env/
+
+# Файлы PyCharm (игнорируем настройки IDE)
+.idea/
+*.iml
+
+# Кэш и байт-код Python
+__pycache__/
+*.pyc
+
+# Файлы, которые создает ОС
+.DS_Store
+Thumbs.db

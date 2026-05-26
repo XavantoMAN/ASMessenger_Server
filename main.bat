@@ -1,3 +1,3 @@
 @ECHO OFF
-C:\Users\admin\PycharmProjects\ASMessenger_Server\.venv\Scripts\python.exe app.py
+C:\Users\admin\AppData\Local\Programs\Python\Python310\python.exe app.py
 PAUSE

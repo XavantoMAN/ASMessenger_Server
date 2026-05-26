@@ -2,21 +2,24 @@
 import ast
 import contextlib
 from typing import Any
-
+import os
 import mysql.connector
 from werkzeug import security
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class CursorDB:
 
     def __init__(self):
         conn_params = {
-            'user': 'root',
-            'password': '210803ss',
-            'host': 'localhost',
+            'user': os.getenv('DB_USER'),
+            'password': os.getenv('DB_PASSWORD'),
+            'host': os.getenv('DB_HOST'),
             'autocommit': True,
-            'database': 'asmessenger',
-            'port': 3304
+            'database': os.getenv('DB_NAME'),
+            'port': int(os.getenv('DB_PORT'))
         }
 
         try:
@@ -29,15 +32,11 @@ class CursorDB:
     def __enter__(self):
         return self
 
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.connection.close()
 
-
     def __del__(self):
         self.connection.close()
-
-
 
 
 @contextlib.contextmanager
@@ -208,15 +207,16 @@ def get_partner_info(partner_id: int) -> tuple | str:
             return "Bad request"
 
 
-def get_messages(chat_id: int, p: int) -> list | str:
+def get_messages(chat_id: int, recipient_id: int, p: int) -> list | str:
     # (p-1) * N -> формула для расчета кол-ва пропускаемых записей таблицы где p - это номер страницы,
     # а N - число записей которые мы хотим получить из таблицы
     with get_cursor() as cur:
         N = 30
         query = f'''
-                SELECT sender_id, content, message_datetime
+                SELECT message.message_id, sender_id, content, message_datetime, status_id
                 FROM message
-                WHERE chat_id = {chat_id}
+                LEFT JOIN chat_messages ON message.message_id = chat_messages.message_id
+                WHERE chat_id = {chat_id} AND chat_messages.recipient_id != {recipient_id}
                 ORDER BY message_id DESC
                 LIMIT {N} OFFSET {(p-1) * N}
                 '''
@@ -227,7 +227,7 @@ def get_messages(chat_id: int, p: int) -> list | str:
             for i in range(len(result)):
                 temp = []
                 for j in range(len(result[i])):
-                    if j == 2:
+                    if j == 3:
                         lst = str(result[i][j]).split(' ')
                         temp.append(lst[0])
                         lst[1] = lst[1][0:5]
@@ -259,7 +259,7 @@ def check_destination_of_message(chat_id: int):
             return False
 
 
-def add_message(chat_id: int, sender_id: int, recipient_id: int, message_text: str):
+def add_message(chat_id: int, sender_id: int, recipient_id: int, message_text: str) -> int | str:
     with get_cursor() as cur:
         query = f'''
                 INSERT INTO message(chat_id, sender_id, content_type_id, content)
@@ -273,6 +273,49 @@ def add_message(chat_id: int, sender_id: int, recipient_id: int, message_text: s
                     VALUES ({message_id}, {sender_id}, 3, 1), ({message_id}, {recipient_id}, 1, 0)
                     '''
             cur.cursor.execute(query)
+            return message_id
+        except mysql.connector.Error as e:
+            print("Возникло исключение во время выполнения запроса:", e)
+            return "Bad request"
+
+
+def change_message_status_to_delivered(recipient_id: int) -> str:
+    with get_cursor() as cur:
+        query = f'''
+                UPDATE chat_messages
+                SET status_id = 2
+                WHERE status_id = 1 AND recipient_id = {recipient_id}
+                '''
+        try:
+            cur.cursor.execute(query)
+            return "OK"
+        except mysql.connector.Error as e:
+            print("Возникло исключение во время выполнения запроса:", e)
+            return "Bad request"
+
+
+def change_message_status_to_read(chat_id: int, recipient_id: int) -> str:
+    with get_cursor() as cur:
+        query = f'''
+                SELECT message_id
+                FROM chat_messages
+                WHERE recipient_id = {recipient_id} AND status_id = 2 OR status_id = 1
+                INTERSECT
+                SELECT message_id
+                FROM message
+                WHERE chat_id = {chat_id}
+                '''
+        try:
+            cur.cursor.execute(query)
+            messages = cur.cursor.fetchall()
+            for message in messages:
+                message_id = message[0]
+                query = f'''
+                        UPDATE chat_messages
+                        SET status_id = 3
+                        WHERE message_id = {message_id} AND recipient_id = {recipient_id}
+                        '''
+                cur.cursor.execute(query)
             return "OK"
         except mysql.connector.Error as e:
             print("Возникло исключение во время выполнения запроса:", e)
@@ -343,6 +386,7 @@ def get_foreign_profile(user_id: int) -> list | str:
         except mysql.connector.Error as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
+
 
 def search_users_by_phone(phone: str) -> list | str:
     with get_cursor() as cur:

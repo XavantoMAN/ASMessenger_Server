@@ -1,3 +1,3 @@
 @ECHO OFF
-C:\Users\admin\PycharmProjects\ASMessenger_Server\.venv\Scripts\python.exe messenger.py
+C:\Users\admin\AppData\Local\Programs\Python\Python310\python.exe messenger.py
 PAUSE
