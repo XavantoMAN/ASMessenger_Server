@@ -3,7 +3,7 @@ import ast
 import contextlib
 from typing import Any
 import os
-import mysql.connector
+import sqlite3
 from werkzeug import security
 from dotenv import load_dotenv
 
@@ -13,18 +13,9 @@ load_dotenv()
 class CursorDB:
 
     def __init__(self):
-        conn_params = {
-            'user': os.getenv('DB_USER'),
-            'password': os.getenv('DB_PASSWORD'),
-            'host': os.getenv('DB_HOST'),
-            'autocommit': True,
-            'database': os.getenv('DB_NAME'),
-            'port': int(os.getenv('DB_PORT'))
-        }
-
         try:
-            self.connection = mysql.connector.connect(**conn_params)
-        except mysql.connector.Error as e:
+            self.connection = sqlite3.connect('asmessenger.db', check_same_thread=False)
+        except Exception as e:
             print(f'Во время подключения возникла ошибка: {e}')
 
         self.cursor = self.connection.cursor()
@@ -62,7 +53,7 @@ def add_user(phone_number: str, password: str) -> str:
             cur.cursor.execute(query)
             print("user added")
             return f"{last_id}"
-        except mysql.connector.Error as e:
+        except Exception as e:
             if 'duplicate entry' in str(e).lower():
                 print("Пользователь уже существует: ", e)
                 return "user already exist"
@@ -87,7 +78,7 @@ def auth_user(phone_number: str, password: str) -> str:
                     return "Wrong password\n"
             else:
                 return "User not registered\n"
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Not registered\n"
 
@@ -114,7 +105,7 @@ def show_selected_user(user_id: str) -> str:
                 return data
             else:
                 return "Bad request"
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -130,7 +121,7 @@ def update_user_data(user_id: int, user_avatar: str, user_nickname: str) -> str:
             cur.cursor.execute(query)
             print("info updated")
             return "OK"
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -160,7 +151,7 @@ def get_chat_id(first_member_id: int, second_member_id: int) -> str:
             except TypeError as e:
                 print("None нельзя проиндексировать: ", e)
                 return "null"
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -186,7 +177,7 @@ def create_chat(first_member_id: int, second_member_id: int) -> str:
                     '''
             cur.cursor.execute(query)
             return str(last_id)
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -202,7 +193,7 @@ def get_partner_info(partner_id: int) -> tuple | str:
             cur.cursor.execute(query)
             result = cur.cursor.fetchone()
             return result
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -236,7 +227,7 @@ def get_messages(chat_id: int, recipient_id: int, p: int) -> list | str:
                         temp.append(result[i][j])
                 new_data.append(temp)
             return new_data
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -254,7 +245,7 @@ def check_destination_of_message(chat_id: int):
             cur.cursor.execute(query)
             result = cur.cursor.fetchall()
             return result
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return False
 
@@ -274,7 +265,7 @@ def add_message(chat_id: int, sender_id: int, recipient_id: int, message_text: s
                     '''
             cur.cursor.execute(query)
             return message_id
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -289,7 +280,7 @@ def change_message_status_to_delivered(recipient_id: int) -> str:
         try:
             cur.cursor.execute(query)
             return "OK"
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -317,7 +308,7 @@ def change_message_status_to_read(chat_id: int, recipient_id: int) -> str:
                         '''
                 cur.cursor.execute(query)
             return "OK"
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -365,7 +356,7 @@ def get_chat_list(user_id: int) -> list | str:
                     chat_data = cur.cursor.fetchone()
                     chats.append(chat_data)
             return chats
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -383,7 +374,7 @@ def get_foreign_profile(user_id: int) -> list | str:
             result = cur.cursor.fetchone()
             user_data = [result]
             return user_data
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"
 
@@ -400,6 +391,6 @@ def search_users_by_phone(phone: str) -> list | str:
             cur.cursor.execute(query)
             result = cur.cursor.fetchall()
             return result
-        except mysql.connector.Error as e:
+        except Exception as e:
             print("Возникло исключение во время выполнения запроса:", e)
             return "Bad request"

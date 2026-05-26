@@ -1,13 +1,9 @@
 from flask import Flask, request
 from werkzeug.utils import secure_filename
-from waitress import serve
 import db_connection
 import json
 
 UPLOAD_FOLDER = '/static/user_avatars'
-
-HOST = "192.168.0.102"
-PORT = 1500
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -120,4 +116,4 @@ def search_users_by_phone():
     return result
 
 
-serve(app, host=HOST, port=PORT)
+application = app
